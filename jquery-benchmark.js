@@ -2,45 +2,61 @@
  * Simple Benchmark Plugin
  * MIT Licensed
  * @author Emil Kilhage
- * Last updated: 2010-11-10 01:19:58
+ * Last updated: 2010-11-11 00:27:48
  */
 (function( $ ) {
 
-var benchmark = function( args ) {
-  this._init.apply(this, args);
-};
+/**
+ * @param a: arguments
+ */
+var BM = function( a ) {
+  this._init.apply( this, a );
+},
 
-benchmark.prototype = {
+B = $.benchmark = function() {
+  return new BM( arguments );
+},
 
-  // Constants
-  START:    "Start",
-  END:      "End",
-  CONSOLE:  "console",
-  ALERT:    "alert",
-  OUTPUT_MESSAGE: "jQuery-Benchmark :: {time} ms",
+output_enabled = true,
 
-  _init: function( markStart, outputMethod ) {
-    this._marks = {};
-    this.outputMethod = typeof outputMethod === "string" || typeof outputMethod === "boolean" 
-      ? outputMethod
-      : this.CONSOLE;
-    if( ! markStart ) {
+NAME = "jQuery-Benchmark";
+
+BM.prototype = {
+
+  /**
+   * @param mS: markStart
+   */
+  _init: function( mS ) {
+    this.reset();
+    if( ! mS ) {
       this.start();
     }
   },
 
+  reset: function() {
+    this._marks = {};
+  },
+
   start: function() {
-    return this.mark(this.START);
+    return this.mark("start");
   },
 
-  end: function( output ) {
-    return this.mark( this.END, this.START, ! output );
+  /**
+   * @param o: Output
+   */
+  end: function( o ) {
+    return this.mark( "end", "start", o == null ? true : o );
   },
 
-  mark: function( name, start, output ) {
-    var mark = this._marks[ name ] = this.now();
-    if( start ) {
-      mark = this.elapsedTime( start, name, output );
+  /**
+   * @param n: Name
+   * @param s: Start
+   * @param o: Output
+   */
+  mark: function( n, s, o ) {
+    var mark = this._marks[ n ] = this.now();
+    if( s ) {
+      mark = this.elapsedTime( s, n, o );
     }
     return mark;
   },
@@ -49,29 +65,74 @@ benchmark.prototype = {
     return (new Date()).getTime();
   },
 
-  elapsedTime: function( mark1, mark2, output ) {
-    var time = this._marks[ mark2 ] - this._marks[ mark1 ];
-    if( output ) {
-      this._output( this.OUTPUT_MESSAGE.replace( "{time}", mark2 + " - " + mark1 + " = " + time ) );
+  /**
+   * @param m1: Mark 1
+   * @param m2: Mark 2
+   * @param o:  Output
+   */
+  elapsedTime: function( m1, m2, o ) {
+    var t = this._marks[ m2 ] - this._marks[ m1 ];
+    if( o ) {
+      o = typeof output === "string" ? o : "";
+      this._output( NAME + " :: Runtime: " + t + " ms (" + m1 + ", " + m2 + ") | " + o );
     }
-    return time;
+    return t;
   },
 
+  /**
+   * @param m: Message
+   */
   _output: function( m ) {
-    switch( this.outputMethod ) {
-      case this.CONSOLE:
-        return console.log( m );
-      case this.ALERT:
-        return alert( m );
-      default:
-        return m;
+    if(output_enabled){
+      console.log( m );
     }
+    return m;
   }
 
 };
 
-$.benchmark = function(){
-  return new benchmark(arguments);
-};
+$.extend(B, {
+  
+  test: function( a ) {
+    // Set argument offset according to
+    // what is passed in as the first argument
+    var o = typeof a === "object" ? 1 : 0,
+    // If an array is passed in as the first argument, use these arguments
+    args = o === 1 ? a : [],
+    // Declare some variables
+    d, g = args.length, i = args[ g ] = 0,
+    // Set callback function
+    c = arguments[ 0 + o ],
+    // Set the length of the loop
+    l = arguments[ 1 + o ] || 1000;
+
+    // Determine if we should benchmark the test
+    if( arguments[ 2 + o ] !== false ) {
+      // Init the benchmarker
+      d = B();
+    }
+
+    // Do the actual test
+    for(; i <= l; args[ g ] = ++i ) {
+      // Apply the arguments to the function and make "this" point to the DOM-Window
+      c.apply( window, args );
+    }
+    
+    if( d ) {
+      return d.end("jQuery.benchmark.test->> " + l + " times");
+    }
+    
+    return l;
+  },
+
+  enable: function() {
+    return output_enabled = true;
+  },
+
+  disable: function() {
+    return output_enabled = false;
+  }
+
+});
 
 }( jQuery ));
