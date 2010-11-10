@@ -1,10 +1,11 @@
-(function( $ ) {
-
-/**
- * Simple benchmark Plugin
+/*-----------------------*
+ * Simple Benchmark Plugin
  * MIT Licensed
  * @author Emil Kilhage
+ * Last updated: 2010-11-10 01:19:58
  */
+(function( $ ) {
+
 var benchmark = function( args ) {
   this._init.apply(this, args);
 };
@@ -12,15 +13,17 @@ var benchmark = function( args ) {
 benchmark.prototype = {
 
   // Constants
-  START:    "start",
-  END:      "end",
+  START:    "Start",
+  END:      "End",
   CONSOLE:  "console",
   ALERT:    "alert",
   OUTPUT_MESSAGE: "jQuery-Benchmark :: {time} ms",
 
   _init: function( markStart, outputMethod ) {
     this._marks = {};
-    this.outputMethod = outputMethod || this.CONSOLE;
+    this.outputMethod = typeof outputMethod === "string" || typeof outputMethod === "boolean" 
+      ? outputMethod
+      : this.CONSOLE;
     if( ! markStart ) {
       this.start();
     }
@@ -55,25 +58,14 @@ benchmark.prototype = {
   },
 
   _output: function( m ) {
-    var r;
     switch( this.outputMethod ) {
       case this.CONSOLE:
-        r = this._log( m );
-        break;
+        return console.log( m );
       case this.ALERT:
-        r = alert( m );
-        break;
+        return alert( m );
       default:
-        r = this._log( m );
+        return m;
     }
-    return r;
-  },
-
-  _log: function( m ) {
-    if( console.log ){
-      console.log( m );
-    }
-    return m;
   }
 
 };
