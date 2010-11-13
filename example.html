@@ -110,18 +110,19 @@ $('#6').html("Runtime: " + runTime + " ms <br><br>Console output:<br>" + $.bench
 
 });
 
-$("#input7").click(function() {
+$("#input8").click(function() {
+
+$.benchmark.start();
 
 for( var runTime = 0, i = 0; i < 10000; i++ ) {
-  $.benchmark.start("Test");
 
   $("a").show().hide().show().hide();
   $('div').html();
-
-  runTime += $.benchmark.end("Test").result();
 }
 
-$('#7').html("Runtime: " + runTime + " ms <br><br>Console output:<br>" + $.benchmark.output() + " <br><b>No output since we dont tell it to do any output<b>");
+runTime += $.benchmark.end().result();
+
+$('#8').html("Runtime: " + runTime + " ms <br><br>Console output:<br>" + $.benchmark.output());
 
 });
 
@@ -265,18 +266,20 @@ $(<span style='color:#2a00ff; '>'#6'</span>).html(<span style='color:#2a00ff; '>
 
     <div style="margin-top: 50px; width: 800px; margin-left: auto; margin-right: auto; background-color: aliceblue; padding: 20px;">
       <h4>Code:</h4>
-<pre style='color:#000000;background:aliceblue;'><span style='color:#7f0055; font-weight:bold; '>for</span>( <span style='color:#7f0055; font-weight:bold; '>var</span> runTime = 0, i = 0; i &lt; 10000; i++ ) {
-  $.benchmark.start(<span style='color:#2a00ff; '>"Test"</span>);
+<pre style='color:#000000;background:aliceblue;'>$.benchmark.start();
 
+<span style='color:#7f0055; font-weight:bold; '>for</span>( <span style='color:#7f0055; font-weight:bold; '>var</span> runTime = 0, i = 0; i &lt; 10000; i++ ) {
+
+  $(<span style='color:#2a00ff; '>"a"</span>).show().hide().show().hide();
   $(<span style='color:#2a00ff; '>'div'</span>).html();
-
-  runTime += $.benchmark.end(<span style='color:#2a00ff; '>"Test"</span>).result();
 }
 
-$(<span style='color:#2a00ff; '>'#7'</span>).html(<span style='color:#2a00ff; '>"Runtime: "</span> + runTime + <span style='color:#2a00ff; '>" ms + " No output since we dont tell it to do any output"</span>);
+runTime += $.benchmark.end().result();
+
+$(<span style='color:#2a00ff; '>'#8'</span>).html(<span style='color:#2a00ff; '>"Runtime: "</span> + runTime + <span style='color:#2a00ff; '>" ms &lt;br>&lt;br>Console output:&lt;br>"</span> + $.benchmark.output());
 </pre>
-      <center><input type="button" value="Run" id="input7"><br></center>
-      <p id="7"></p>
+      <center><input type="button" value="Run" id="input8"><br></center>
+      <p id="8"></p>
 
     </div>
 
