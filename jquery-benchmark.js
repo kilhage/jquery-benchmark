@@ -5,7 +5,7 @@
  * MIT Licensed
  * @author Emil Kilhage
  * Version: 0.8.0
- * Last updated: 2010-11-13 02:07:36
+ * Last updated: 2010-11-13 17:37:56
  */
 (function( $ ) {
 
@@ -86,7 +86,11 @@ _e = "_end",
 DF = "Default",
 
 // currentTest
-curTest = DF;
+curTest = DF,
+
+now = function(){
+  return (new Date()).getTime();
+};
 
 // Build the Benchmarker Class
 B.prototype = {
@@ -120,7 +124,7 @@ B.prototype = {
    */
   mark: function( name, start, o ) {
     // Make the mark
-    this.marks[ name ] = (new Date()).getTime();
+    this.marks[ name ] = now();
     if( start ) {
       this.elapsedTime( start, name, o );
     }
@@ -191,7 +195,7 @@ $.extend(B, {
       c.apply( window, args );
     }
     return d.end(function( r ) {
-      return " Function tester :: Runtime->> " + r + " ms Runned->> " + l + " times";
+      return " Function tester :: Runtime->> " + r + " ms Runned->> " + l + " times, Average->> " + (B.round((r / l))) + " ms";
     });
   },
 
