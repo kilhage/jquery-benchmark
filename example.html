@@ -3,287 +3,231 @@
   <head>
     <title>jQuery - Benchmark</title>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-    <script src="http://code.jquery.com/jquery.js" type="text/javascript"></script>
+    <script src="http://code.jquery.com/jquery.js?n=hj" type="text/javascript"></script>
+    <link type="text/css" rel="stylesheet" href="http://syntaxhighlighter.googlecode.com/svn-history/r86/trunk/Styles/SyntaxHighlighter.css"></link>
+    <script language="javascript" src="http://syntaxhighlighter.googlecode.com/svn-history/r86/trunk/Scripts/shCore.js"></script>
+    <script language="javascript" src="http://syntaxhighlighter.googlecode.com/svn-history/r86/trunk/Scripts/shBrushJScript.js"></script>
     <script src="jquery-benchmark.js" type="text/javascript"></script>
-<script type="text/javascript">
+<script type="text/javascript" id="hej">
+(function(){
+
+var now = function(){
+  return (new Date()).getTime();
+},
+
+I = 0;
+
+/**
+ * This is used for generating test code
+ */
+$.fn.extend({
+
+  benchmark: function( prop ) {
+    var time = now(), l = this.length, i = 0;
+    function make( r, elem ) {
+      var self = $(elem),
+      html = "",
+      pre = I++ + "benchmark_",
+      suf = r + "_" + time,
+      id = {},
+      ids = ["button", "message", "times", "textarea", "pre", "pre_div"],
+      i = 0, l = ids.length;
+
+      for(; i < l; id[ ids[ i ] ] = pre + ids[ i++ ] + suf ) {}
+
+      html += "<div><h3>Code: " + ( prop.name ? prop.name : "" ) + "</h3>";
+
+      if( prop.description ) {
+        html += "<p>"+prop.description.replace("\n", "<br>")+"</p>";
+      }
+
+      html += "<div id='" + id.pre_div + "'><pre name='code' id='" + id.pre + "' class='jscript'>" + ( prop.test ? prop.test.toString() : "" ) + "</pre></div>";
+
+      if( prop.tester ) {
+        html += "<input type='text' id='" + id.times + "' size='5' value='100' />";
+      }
+
+      if( prop.type === "user-input" ) {
+        html += "<textarea id='"+id.textarea+"' cols='100' rows='15'>" + ( prop.test ? prop.test.toString() : "" ) + "</textarea>";
+      }
+
+      html += "<input type='button' id='" + id.button + "' value='Run Code' />";
+      html += "<div id='" + id.message + "'><div>";
+
+      self.html(html);
+
+      $("#"+id.button).click(function() {
+
+        if( prop.type === "user-input" ) {
+          var data = $("#"+id.textarea).val();
+          $("#" + id.pre_div).html("<pre name='code' id='" + id.pre + "' class='jscript'>" + data + "</pre>");
+          $("#" + id.pre).html(data);
+          dp.SyntaxHighlighter.HighlightAll("code");
+          eval(data);
+        } else {
+          if( prop.tester ) {
+            var times = $("#"+id.times).val();
+            $.benchmark.test(prop.test, times);
+          } else {
+            prop.test();
+          }
+
+        }
+        $("#"+id.message).html( prop.output ? prop.output : $.benchmark.output() );
+
+      });
+
+    }
+
+    for(; i < l; make( i, this[ i++ ] ) ) {}
+
+    return this;
+  }
+
+});
+
+})();
+
 
 $(function(){
 
-$('#input1').click(function(){
+  for( var i = 1; i <= 5;) {
+    $("body").append("<div id='input" + i++ + "' class='test'></div>");
+  }
 
-var benchmark = $.benchmark(), i = 0;
+  var runTime;
 
-for(; i < 1000; i++ ) {
-  $('b').html();
-}
+  $('#input1').benchmark({
 
-var resultInMs = benchmark.end().result();
+    description: "Making simple tests",
 
-$('#1').html("Runtime: " + resultInMs + " ms <br><br>Console output:<br>" + $.benchmark.output());
+    test:
+function() {
+  // The most basic test, mark the start
+  $.benchmark.start();
+  // Run thus code 100 times
+  for( var i = 0; i < 100; i++ ) {
+    $("a").show().hide().show().hide();
+    $('div').html();
+  }
+  // Mark the end and output the result,
+  // since all benchmarker methods returns the object itself we need to write ".result()"
+  // to return the result, this is later used to show the result below,
+  // the only way i'm doing this is to show the result on the page, all result is being
+  // written out in the console...
+  runTime = $.benchmark.end().result();
 
-});
+},
 
-$("#input2").click(function(){
+    output: function() {
+      return "runTime " + runTime + " ms <br><br>Console output:<br>" + $.benchmark.output();
+    }
 
-var runTime = $.benchmark.test(['hej'], function( n, i ) {
+  });
 
-  // n = 'hej' every time and i will do the current number in the loop
-  $('body').html();
+  $('#input2').benchmark({
 
-}, 10000).result();
+    description: "Using: $.benchmark.test()",
 
-$('#2').html("Runtime: " + runTime + " ms <br><br>Console output:<br>" + $.benchmark.output());
+    test:
+function(){
+  // Here we creates a function that we pass into the function tester
+  // The first parameter(the array), is the arguments that will be passed into the callback
+  runTime = $.benchmark.test(['info'], function( n, i ) {
 
-});
+    // 'n' = 'info' every time and 'i' will do the current number in the loop
+    $('body').html();
 
-$("#input3").click(function(){
+  // This says that it will run the function 100 times
+  }, 100).result();
 
-var testFunction = function(){
-  $('div').hide();
-  $('div').show();
-}
+},
 
-var runTime = $.benchmark.test(testFunction, 1000).result();
+    output: function() {
+      return "runTime " + runTime + " ms <br><br>Console output:<br>" + $.benchmark.output();
+    }
 
-$('#3').html("Runtime: " + runTime + " ms <br><br>Console output:<br>" + $.benchmark.output());
+  });
 
-});
+  $('#input3').benchmark({
 
-$("#input4").click(function() {
+    description: "Using: $.benchmark.test()",
 
-$.benchmark.startTest("name of the test");
+    test:
+function(){
 
-for(var i = 0; i < 1000; i++) {
-  $.benchmark.start("show hide");
-  $('div').hide();
-  $('div').show();
-  $.benchmark.end("show hide");
-}
+  var testFunction = function(){
+    $('div').hide();
+    $('div').show();
+  }
+  // More or less the same test as above,
+  // only here we aren't sending in any parameters
+  // to the tester and we are creating the function before we do the test
+  runTime = $.benchmark.test(testFunction, 100).result();
 
-for(var i = 0; i < 1000; i++) {
-  $.benchmark.start("html");
-  $('div').html();
-  $.benchmark.end("html");
-}
+},
 
-var runTime = $.benchmark.endTest("name of the test").result();
+    output: function() {
+      return "runTime " + runTime + " ms <br><br>Console output:<br>" + $.benchmark.output();
+    }
 
-$('#4').html("Runtime: " + runTime + " ms <br><br>Console output:<br>" + $.benchmark.output());
+  });
 
-});
+  $('#input4').benchmark({
 
-$("#input5").click(function() {
+    description: "Making more complex tests",
 
-$.benchmark.start();
+    test:
+function() {
+  // Mark the start of the main test
+  $.benchmark.startTest("name of the test");
 
-for(var i = 0; i < 1000; i++) {
-  $.benchmark.start("show hide");
-  $('div').hide();
-  $('div').show();
-  $.benchmark.end("show hide");
-}
+  // Preform a sub-test, that will be runned 1000 timess
+  for( var i = 0; i < 1000; i++ ) {
+    $.benchmark.start("show hide");
+    $('div').hide();
+    $('div').show();
+    $.benchmark.end("show hide");
 
-for(var i = 0; i < 1000; i++) {
-  $.benchmark.start("html");
-  $('div').html();
-  $.benchmark.end("html");
-}
+  // Preform another sub-test
+    $.benchmark.start("html");
+    $('div').html();
+    $.benchmark.end("html");
+  }
 
-var runTime = $.benchmark.end().result();
+  // Mark the end of the test and output the result
+  runTime = $.benchmark.endTest("name of the test").result();
 
-$('#5').html("Runtime: " + runTime + " ms <br><br>Console output:<br>" + $.benchmark.output());
+},
 
-});
+    output: function() {
+      return "runTime " + runTime + " ms <br><br>Console output:<br>" + $.benchmark.output();
+    }
 
-$("#input6").click(function() {
+  });
 
-var testresult = $.benchmark.start("hide-test").disable().test(function() {
 
-  $("a").hide();
-
-}).result();
-
-var runTime = $.benchmark.enable().end("hide-test", true).result();
-
-$('#6').html("Runtime: " + runTime + " ms <br><br>Console output:<br>" + $.benchmark.output() +
-"<b>Result for the hide test:</b> " + testresult + " ms");
-
-});
-
-$("#input8").click(function() {
-
-$.benchmark.start();
-
-for( var runTime = 0, i = 0; i < 10000; i++ ) {
-
-  $("a").show().hide().show().hide();
-  $('div').html();
-}
-
-runTime += $.benchmark.end().result();
-
-$('#8').html("Runtime: " + runTime + " ms <br><br>Console output:<br>" + $.benchmark.output());
-
-});
+  dp.SyntaxHighlighter.ClipboardSwf = 'http://syntaxhighlighter.googlecode.com/svn-history/r86/trunk/Scripts/clipboard.swf';
+  dp.SyntaxHighlighter.HighlightAll('code');
 
 });
 
 </script>
+<style type="text/css">
+
+.test {
+  margin-top: 20px;
+  width: 800px;
+  margin-left: auto;
+  margin-right: auto;
+  padding: 20px;
+}
+
+</style>
   </head>
   <body>
 
     <div><center><h2 style="margin-bottom: 0px">jQuery - Benchmark</h2>Author: Emil Kilhage</center></div>
 
-    <div style="margin-top: 20px; width: 800px; margin-left: auto; margin-right: auto; background-color: aliceblue; padding: 20px;">
-      <h4>Code:</h4>
-<pre style='color:#000000;background:aliceblue;'>
-<span style='color:#7f0055; font-weight:bold; '>var</span> benchmark = $.benchmark(), i = 0;
-
-<span style='color:#7f0055; font-weight:bold; '>for</span>(; i &lt; 1000; i++ ) {
-  $(<span style='color:#2a00ff; '>'b'</span>).html();
-}
-
-<span style='color:#7f0055; font-weight:bold; '>var</span> resultInMs = benchmark.end().result();
-
-$(<span style='color:#2a00ff; '>'#1'</span>).html(<span style='color:#2a00ff; '>"Runtime: "</span> + resultInMs + <span style='color:#2a00ff; '>" ms &lt;br>&lt;br>Console output:&lt;br>"</span> + $.benchmark.output());
-</pre>
-      <center><input type="button" value="Run" id="input1"><br></center>
-      <p id="1"></p>
-    </div>
-
-
-
-    <div style="margin-top: 50px; width: 800px; margin-left: auto; margin-right: auto; background-color: aliceblue; padding: 20px;">
-      <h4>Code:</h4>
-<pre style='color:#000000;background:aliceblue;'><span style='color:#7f0055; font-weight:bold; '>var</span> runTime = $.benchmark.<span style='color:#7f0055; font-weight:bold; '>test</span>([<span style='color:#2a00ff; '>'hej'</span>], <span style='color:#7f0055; font-weight:bold; '>function</span>( n, i ) {
-
-  <span style='color:#3f7f59; '>// n = 'hej' every time and i will do the current number in the loop</span>
-  $(<span style='color:#2a00ff; '>'body'</span>).html();
-
-}, 10000).result();
-
-$(<span style='color:#2a00ff; '>'#2'</span>).html(<span style='color:#2a00ff; '>"Runtime: "</span> + runTime + <span style='color:#2a00ff; '>" ms &lt;br>&lt;br>Console output:&lt;br>"</span> + $.benchmark.output());
-</pre>
-      <center><input type="button" value="Run" id="input2"><br></center>
-      <p id="2"></p>
-
-    </div>
-
-
-
-    <div style="margin-top: 50px; width: 800px; margin-left: auto; margin-right: auto; background-color: aliceblue; padding: 20px;">
-      <h4>Code:</h4>
-<pre style='color:#000000;background:aliceblue;'><span style='color:#7f0055; font-weight:bold; '>var</span> testFunction = <span style='color:#7f0055; font-weight:bold; '>function</span>(){
-  $(<span style='color:#2a00ff; '>'div'</span>).hide();
-  $(<span style='color:#2a00ff; '>'div'</span>).show();
-}
-
-<span style='color:#7f0055; font-weight:bold; '>var</span> runTime = $.benchmark.<span style='color:#7f0055; font-weight:bold; '>test</span>(testFunction, 1000).result();
-
-$(<span style='color:#2a00ff; '>'#3'</span>).html(<span style='color:#2a00ff; '>"Runtime: "</span> + runTime + <span style='color:#2a00ff; '>" ms &lt;br>&lt;br>Console output:&lt;br>"</span> + $.benchmark.output());
-</pre>
-      <center><input type="button" value="Run" id="input3"><br></center>
-      <p id="3"></p>
-    </div>
-
-
-
-    <div style="margin-top: 50px; width: 800px; margin-left: auto; margin-right: auto; background-color: aliceblue; padding: 20px;">
-      <h4>Code:</h4>
-<pre style='color:#000000;background:aliceblue;'>$.benchmark.startTest(<span style='color:#2a00ff; '>"name of the test"</span>);
-
-<span style='color:#7f0055; font-weight:bold; '>for</span>(<span style='color:#7f0055; font-weight:bold; '>var</span> i = 0; i &lt; 1000; i++) {
-  $.benchmark.start(<span style='color:#2a00ff; '>"show hide"</span>);
-  $(<span style='color:#2a00ff; '>'div'</span>).hide();
-  $(<span style='color:#2a00ff; '>'div'</span>).show();
-  $.benchmark.end(<span style='color:#2a00ff; '>"show hide"</span>);
-}
-
-<span style='color:#7f0055; font-weight:bold; '>for</span>(<span style='color:#7f0055; font-weight:bold; '>var</span> i = 0; i &lt; 1000; i++) {
-  $.benchmark.start(<span style='color:#2a00ff; '>"html"</span>);
-  $(<span style='color:#2a00ff; '>'div'</span>).html();
-  $.benchmark.end(<span style='color:#2a00ff; '>"html"</span>);
-}
-
-<span style='color:#7f0055; font-weight:bold; '>var</span> runTime = $.benchmark.endTest(<span style='color:#2a00ff; '>"name of the test"</span>).result();
-
-$(<span style='color:#2a00ff; '>'#4'</span>).html(<span style='color:#2a00ff; '>"Runtime: "</span> + runTime + <span style='color:#2a00ff; '>" ms &lt;br>&lt;br>Console output:&lt;br>"</span> + $.benchmark.output());
-</pre>
-      <center><input type="button" value="Run" id="input4"><br></center>
-      <p id="4"></p>
-
-    </div>
-
-
-
-    <div style="margin-top: 50px; width: 800px; margin-left: auto; margin-right: auto; background-color: aliceblue; padding: 20px;">
-      <h4>Code:</h4>
-<pre style='color:#000000;background:aliceblue;'>$.benchmark.start();
-
-<span style='color:#7f0055; font-weight:bold; '>for</span>(<span style='color:#7f0055; font-weight:bold; '>var</span> i = 0; i &lt; 1000; i++) {
-  $.benchmark.start(<span style='color:#2a00ff; '>"show hide"</span>);
-  $(<span style='color:#2a00ff; '>'div'</span>).hide();
-  $(<span style='color:#2a00ff; '>'div'</span>).show();
-  $.benchmark.end(<span style='color:#2a00ff; '>"show hide"</span>);
-}
-
-<span style='color:#7f0055; font-weight:bold; '>for</span>(<span style='color:#7f0055; font-weight:bold; '>var</span> i = 0; i &lt; 1000; i++) {
-  $.benchmark.start(<span style='color:#2a00ff; '>"html"</span>);
-  $(<span style='color:#2a00ff; '>'div'</span>).html();
-  $.benchmark.end(<span style='color:#2a00ff; '>"html"</span>);
-}
-
-<span style='color:#7f0055; font-weight:bold; '>var</span> runTime = $.benchmark.end().result();
-
-$(<span style='color:#2a00ff; '>'#5'</span>).html(<span style='color:#2a00ff; '>"Runtime: "</span> + runTime + <span style='color:#2a00ff; '>" ms &lt;br>&lt;br>Console output:&lt;br>"</span> + $.benchmark.output());
-</pre>
-      <center><input type="button" value="Run" id="input5"><br></center>
-      <p id="5"></p>
-
-    </div>
-
-
-
-    <div style="margin-top: 50px; width: 800px; margin-left: auto; margin-right: auto; background-color: aliceblue; padding: 20px;">
-      <h4>Code:</h4>
-<pre style='color:#000000;background:aliceblue;'><span style='color:#7f0055; font-weight:bold; '>var</span> testresult = $.benchmark.start(<span style='color:#2a00ff; '>"hide-test"</span>).disable().<span style='color:#7f0055; font-weight:bold; '>test</span>(<span style='color:#7f0055; font-weight:bold; '>function</span>() {
-
-  $(<span style='color:#2a00ff; '>"a"</span>).hide();
-
-}).result();
-
-<span style='color:#7f0055; font-weight:bold; '>var</span> runTime = $.benchmark.enable().end(<span style='color:#2a00ff; '>"hide-test"</span>, <span style='color:#7f0055; font-weight:bold; '>true</span>).result();
-
-$(<span style='color:#2a00ff; '>'#6'</span>).html(<span style='color:#2a00ff; '>"Runtime: "</span> + runTime + <span style='color:#2a00ff; '>" ms &lt;br>&lt;br>Console output:&lt;br>"</span> + $.benchmark.output() +
- <span style='color:#2a00ff; '>"&lt;b>Result for the hide test:&lt;/b> "</span> + testresult + <span style='color:#2a00ff; '>" ms"</span>);
-</pre>
-      <center><input type="button" value="Run" id="input6"><br></center>
-      <p id="6"></p>
-
-    </div>
-
-
-
-    <div style="margin-top: 50px; width: 800px; margin-left: auto; margin-right: auto; background-color: aliceblue; padding: 20px;">
-      <h4>Code:</h4>
-<pre style='color:#000000;background:aliceblue;'>$.benchmark.start();
-
-<span style='color:#7f0055; font-weight:bold; '>for</span>( <span style='color:#7f0055; font-weight:bold; '>var</span> runTime = 0, i = 0; i &lt; 10000; i++ ) {
-
-  $(<span style='color:#2a00ff; '>"a"</span>).show().hide().show().hide();
-  $(<span style='color:#2a00ff; '>'div'</span>).html();
-}
-
-runTime += $.benchmark.end().result();
-
-$(<span style='color:#2a00ff; '>'#8'</span>).html(<span style='color:#2a00ff; '>"Runtime: "</span> + runTime + <span style='color:#2a00ff; '>" ms &lt;br>&lt;br>Console output:&lt;br>"</span> + $.benchmark.output());
-</pre>
-      <center><input type="button" value="Run" id="input8"><br></center>
-      <p id="8"></p>
-
-    </div>
-
-
-    <br><br><br><br><br>
   </body>
 </html>
