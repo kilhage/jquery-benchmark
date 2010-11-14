@@ -5,7 +5,7 @@
  * MIT Licensed
  * @author Emil Kilhage
  * Version: 0.8.0
- * Last updated: 2010-11-13 17:37:56
+ * Last updated: 2010-11-14 03:43:41
  */
 (function( $ ) {
 
