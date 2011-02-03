@@ -25,7 +25,7 @@ $.fn.benchmark = function() {
                             .click(function(){
                                 code.slideToggle(50);
                             })
-                            .css({"cursor":"pointer"})
+                            .addClass("test")
                             .append(code);
                     } catch(e) {
                         console.log(e);
@@ -68,17 +68,15 @@ $.extend(window, {
     }
 
 });
+var div;
+$(function(){
+    div = $("<div />").appendTo("body").addClass("benchmark");
+    $("<h1 >").html(plugin_name).appendTo($("<center />").appendTo(div));
+    div.benchmark();
+});
 
 $.getScript("http://github.com/balupton/jquery-syntaxhighlighter/raw/master/scripts/jquery.syntaxhighlighter.min.js", function(){
     $(function(){
-        var div = $("<div />").appendTo("body").css({
-            "margin-top": "40px",
-            "margin-left": "auto",
-            "margin-right":"auto",
-            "width": "1000px"
-        });
-        $("<h1 >").html(plugin_name).appendTo($("<center />").appendTo(div));
-        div.benchmark();
         $.SyntaxHighlighter.init();
     });
 });
