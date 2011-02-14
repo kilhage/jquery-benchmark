@@ -1,40 +1,56 @@
-/**
- * 
- *
- */
 (function($) {
 
-var tests = {}, _module, plugin_name;
+var tests = {}, _module = "", plugin_name = "", div;
 
-$.benchmark.disable();
+//$.benchmark.disable();
 
-$.fn.benchmark = function() {
-    var self = this;
+$.fn.extend({
+    
+    benchmark: function() {
+        var self = this,
+            rows = [],
+            status = div.find(".status").html("Building..");
 
-    $.each(tests, function(module, test){
         setTimeout(function(){
-            self.append("<h2>- "+module+"</h2>");
-            $.each(test.tests, function(i, ob){
-                    //if ( ob.name != "Fast")return;
-                    try {
-                        var code = $("<code class='language-javascript'/>").html(ob.fn.toString()).hide();
-                        var time = ob.test();
-                        $("<li />")
-                            .html(ob.name+", times("+ob.times+"') :: <b>"+time+"ms</b>")
-                            .appendTo(self)
-                            .click(function(){
-                                code.slideToggle(50);
-                            })
-                            .addClass("test")
-                            .append(code);
-                    } catch(e) {
-                        console.log(e);
-                    }
+            $.each(tests, function(module, test){
+                self.append("<h2>- "+module+"</h2>");
+                $.each(test.tests, function(i, ob){
+                    var code = $("<code class='language-javascript'/>").html(ob.fn.toString()).hide(),
+                        li = $("<li />")
+                        .html("<span>"+ob.name+", times("+ob.times+"')</span>")
+                        .appendTo(self)
+                        .click(function(){
+                            code.slideToggle(50);
+                        })
+                        .addClass("test")
+                        .append(code);
+                        
+                     rows.push({ob: ob, li: li});
+                });
             });
-        }, 0.1);
-    });
-    return this;
-};
+            
+            status.html("Running tests..");
+            $.benchmark.startTest(plugin_name);
+            
+            $.each(rows, function(i, row) {
+                setTimeout(function(){
+                    $.benchmark.start(row.ob.name);
+                    var time = row.ob.test();
+                    
+                    row.li.find("span").first().html(row.li.html()+" :: <b>"+time+"ms</b>");
+                    
+                    $.benchmark.end(row.ob.name);
+                    
+                    if (i == rows.length - 1) {
+                        status.html($.benchmark.endTest(plugin_name).getTest().message);
+                    }
+                }, 0);
+            });
+        }, 0);
+        
+        return this;
+    }
+});
 
 $.extend(window, {
 
@@ -68,9 +84,10 @@ $.extend(window, {
     }
 
 });
-var div;
+
 $(function(){
-    div = $("<div />").appendTo("body").addClass("benchmark");
+    $("head").find("title").html(plugin_name+" :: Performance");
+    div = $("<div />").appendTo("body").addClass("benchmark").html("<span class='status' />");
     $("<h1 >").html(plugin_name).appendTo($("<center />").appendTo(div));
     div.benchmark();
 });
