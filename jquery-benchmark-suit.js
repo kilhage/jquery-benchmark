@@ -2,7 +2,7 @@
 
 var tests = {}, _module = "", plugin_name = "", div;
 
-//$.benchmark.disable();
+$.benchmark.disable();
 
 $.fn.extend({
     

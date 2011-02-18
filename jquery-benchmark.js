@@ -9,31 +9,10 @@
  */
 (function( $ ) {
 
-/**
- * The Base benchmarker that do the actual benchmarking
- *
- * @param avoidMarkStart
- */
-function Benchmarker( avoidMarkStart ) {
-    // avoids the jQuery.benchmark.setup function 
-    // from rewriting this plugin
-    "benchmarked";
-    if( ! ( this instanceof Benchmarker ) ) {
-        return new Benchmarker( avoidMarkStart );
-    }
-    this.reset();
-    if( ! avoidMarkStart ) {
-        this.start();
-    }
-}
-
-// Join the Benchmarker with jQuery
-var B = $.benchmark = Benchmarker,
-
 // Assign some private variables used in the scope
 
 // Used in the output function
-error_preg = /(\{error\}\:)/,
+var error_preg = /(\{error\}\:)/,
 
 error_messages = {
     callback: " Callback didn't return a value!"
@@ -42,47 +21,14 @@ error_messages = {
 // Controlls the output
 enabled = true,
 
-// Controlls the output method
-use_console = true,
-
 // All output will be stored here
 bufferd_output = "",
 
 // Name of the plugin, used in outputs
 name = "jQuery.benchmark :: ",
 
-// Internal output function
-output = function( message ) {
-    // don't make any output if 
-    if( ! enabled ) {
-        return message;
-    }
-    // if not an string is passed, output an empty string instead
-    message = (typeof message === "string") ? name + message : "";
-
-    // Test if an error have accoured
-    if( error_preg.test( message ) ) {
-        // Build the error message and throw an error
-        throw name + ((message.split( error_preg ))[ 2 ]);
-    }
-
-    // Buffer the output wich make it possible
-    // to the the messages using $.benchmark.output();
-    bufferd_output += message + "<br>";
-
-    // Output the message
-    if( use_console && console && console.log ) {
-        console.log( message );
-    } else {
-        alert( message );
-    }
-
-    return message;
-},
-
 // suffixes used in the Tester
-_s = "_start",
-_e = "_end",
+_s = "_start", _e = "_end",
 
 // Default test name
 DF = "Default",
@@ -93,82 +39,27 @@ curTest = DF,
 // Contains test instances
 tests = {};
 
-// Build the Benchmarker Class
-B.prototype = {
-
-    _result: 0,
-
-    /**
-     * Shortcut to make simple tests
-     */
-    start: function() {
-        this.mark("start");
-        return this;
-    },
-
-    /**
-     * Shortcut to make simple tests
-     *
-     * @param doOutput: Output
-     */
-    end: function( doOutput ) {
-        this.mark("end", "start", (doOutput == null ? true : doOutput));
-        return this;
-    },
-
-    /**
-     * Mark the start / end of a test
-     *
-     * @param name: Name
-     * @param start: Start
-     * @param doOutput: Output
-     */
-    mark: function( name, start, doOutput ) {
-        // Make the mark
-        this.marks[ name ] = B.now();
-        if( start ) {
-            this.elapsedTime( start, name, doOutput );
-        }
-        return this;
-    },
-
-    /**
-     * Outputs the elapsed time and return it
-     *
-     * @param m1: Mark 1
-     * @param m2: Mark 2
-     * @param doOutput:  Output
-     */
-    elapsedTime: function( m1, m2, doOutput ) {
-        var time = this._result = this.marks[ m2 ] - this.marks[ m1 ];
-        if( doOutput ) {
-            // Make the output
-            this.message = output(typeof doOutput === "function" ?
-                // If a function is passed as the output param,
-                // run it and pass the values
-                // I the function don't returns a valid value, throw an error
-                // this makes it possible to build custom messages
-                ( doOutput( time, m1, m2 ) || "{error}:elapsedTime->>" + error_messages.callback ) :
-                // else, output the std message
-                "start(" + m1 + ")->> end('" + m2 + "') :: Runtime->> " + time + " ms" + (typeof doOutput === "string" ? doOutput : ""));
-        }
-        return this;
-    },
-
-    result: function() {
-        return this._result;
-    },
-
-    /**
-     * Resets the objects tests
-     */
-    reset: function() {
-        this.marks = {};
+/**
+ * The Base benchmarker that do the actual benchmarking
+ *
+ * @param avoidMarkStart
+ */
+$.benchmark = function Benchmarker( avoidMarkStart ) {
+    if( ! ( this instanceof $.benchmark ) ) {
+        return new $.benchmark( avoidMarkStart );
     }
-
+    this.reset();
+    this.result._ = 0;
+    if( ! avoidMarkStart ) {
+        this.start();
+    }
 };
 
-$.extend( B, {
+// Build the Benchmarker Class
+
+$.extend($.benchmark, {
+    
+    __is_rewritten__: true,
 
     /**
      * Function tester
@@ -181,7 +72,7 @@ $.extend( B, {
         // argument, use these arguments
         args = offset === 1 ? a : [],
         // Init the benchmarker
-        bench = B(),
+        bench = new $.benchmark(),
         // Declare some variables
         lastArg = args.length,
         i = args[ lastArg ] = 0,
@@ -193,13 +84,17 @@ $.extend( B, {
         // Do the actual test
         for(; i <= len; args[ lastArg ] = ++i ) {
             // Apply the arguments to the function
-            // and make "this" point to the DOM-Window
-            c.apply( window, args );
+            c.apply( this, args );
         }
         return bench.end(function( time ) {
             return " Function tester :: Runtime->> " + time + " ms Runned->> " + len +
-            " times, Average->> " + (B.round((time / len))) + " ms";
+            " times, Average->> " + ($.benchmark.round((time / len))) + " ms";
         });
+    },
+    
+    // Checks if a function already have been rewritten
+    isRewritten: function(fn) {
+        return fn.__is_rewritten__ === true;
     },
 
     /**
@@ -212,95 +107,51 @@ $.extend( B, {
      * @param {boolean} recursive
      * @return {object/function}
      */
-    setup: (function() {
+    setup: function( prefix, object, recursive ) {
+        var new_object = {}, fn, prop, is_fn;
 
-        // Checks if a function already have been rewritten
-        var isRewritten = (function() {
-            var fn = function(){
-                "benchmarked";
-            },
-            preg = /"benchmarked";/,
-            test = preg.test(fn);
-
-            return function( fn ) {
-                return test ? preg.test(fn) : false;
-            };
-
-        }());
-
-        // Rewrites a function
-        function rewrite( name, fn, prefix ) {
-            // Don't rewrite the function twice
-            if ( isRewritten(fn) ) {
-                return fn;
-            }
-
-            name = prefix ? (name ? prefix + "." + name : prefix) : name;
-
-            return function() {
-                // Doesn't do anything, is used to identify
-                // that this function have been rewritten.
-                "benchmarked";
-                //Start the function-test
-                B.start(name);
-                // Call the actual function
-                var r = fn.apply(this, arguments);
-                // End the test
-                B.end(name);
-                // Return the return value from the function
-                return r;
-            };
+        // Switch the arguments if the first parameter isn't a string
+        if ( typeof prefix === "string" ) {
+            prefix = prefix.replace(/\.$/, "");
+        } else {
+            recursive = object;
+            object = prefix;
+            prefix = "";
         }
 
-        // The actual setup function
-        return function( prefix, object, recursive ) {
-            var new_object = {}, fn, prop, is_fn;
+        is_fn = $.isFunction(object);
 
-            // Switch the arguments if the first parameter isn't a string
-            if ( typeof prefix === "string" ) {
-                prefix = prefix.replace(/\.$/, "");
-            } else {
-                recursive = object;
-                object = prefix;
-                prefix = "";
+        if ( is_fn || (typeof object === "object" && object !== null) ) {
+
+            // If the object param is a function, rewrite it
+            if ( is_fn ) {
+                new_object = ! $.benchmark.isRewritten(object) ? rewrite("", object, prefix) : object;
+            }
+            // Rewrite all sub functions
+            for ( prop in object ) {
+                // Filter away evil properties on from the prototype
+                if ( object.hasOwnProperty( prop ) ) {
+                    // Transfer the properties to the new, modified object
+                    new_object[ prop ] = (function( prop, fn ) {
+                        // Rewrite the property
+                        if ( $.isFunction(fn) ) {
+                            return recursive === true ? $.benchmark.setup( prefix ? prefix + "." + prop : prop, fn, true) : rewrite(prop, fn, prefix);
+                        }
+                        // Call the setup function recursively
+                        else if ( typeof fn === "object" && fn !== null && recursive === true ) {
+                            return $.benchmark.setup( prefix ? prefix + "." + prop : prop, fn, true);
+                        }
+                        // Else, don't modify the property
+                        return fn;
+                    }( prop, object[ prop ] ));
+                }
             }
 
-            is_fn = $.isFunction(object);
-
-            if ( is_fn || typeof object === "object" ) {
-
-                // If the object param is a function, rewrite it
-                if ( is_fn ) {
-                    new_object = ! isRewritten(object) ? rewrite("", object, prefix) : object;
-                }
-
-                // Rewrite all sub functions
-                for ( prop in object ) {
-                    // Filter away evil properties on from the prototype
-                    if ( object.hasOwnProperty( prop ) ) {
-                        // Transfer the properties to the new, modified object
-                        new_object[ prop ] = (function( prop, fn ) {
-                            // Rewrite the property
-                            if ( $.isFunction(fn) ) {
-                                return rewrite(prop, fn, prefix);
-                            }
-                            // Call the setup function recursively
-                            else if ( typeof fn === "object" && recursive === true ) {
-                                return B.setup( prefix ? prefix + "." + prop : prop, fn, true);
-                            }
-                            // Else, don't modify the property
-                            return fn;
-                        }( prop, object[ prop ] ));
-                    }
-                }
-                // Return the modified object
-                return new_object;
-            }
-
-            return object;
-        };
-
-    }()),
+            // Return the modified object
+            return new_object;
+        }
+        return object;
+    },
 
     // Methods to handel tests
 
@@ -311,7 +162,7 @@ $.extend( B, {
      */
     startTest: function( name ) {
         curTest = name = name || DF;
-        tests[ name ] = new Test( name ).start();
+        tests[ name ] = new $.benchmark.Test( name ).start();
         return this;
     },
 
@@ -320,11 +171,11 @@ $.extend( B, {
      *
      * @param name : test-name
      */
-    endTest: function( name ) {
+    endTest: function( name, avoidReset ) {
         if( ! tests[ (curTest = name = name || curTest || DF) ] ) {
             return this;
         } else {
-            tests[ name ].end().output().reset();
+            tests[ name ].end().output(avoidReset);
         }
         return this;
     },
@@ -408,22 +259,6 @@ $.extend( B, {
         return tests[n || curTest || DF ];
     },
 
-    /**
-     * Method to control how the output should work
-     */
-    useAlert: function() {
-        use_console = false;
-        return this;
-    },
-
-    /**
-     * Method to control how the output should work
-     */
-    useConsole: function() {
-        use_console = true;
-        return this;
-    },
-
     now: function() {
         return (new Date()).getTime();
     },
@@ -439,23 +274,116 @@ $.extend( B, {
     round: function( num, dec ) {
         dec = dec || 5;
         return Math.round( num * Math.pow( 10, dec ) ) / Math.pow( 10, dec );
+    },
+    
+    prototype: {
+
+        /**
+         * Shortcut to make simple tests
+         */
+        start: function() {
+            this.mark("start");
+            return this;
+        },
+
+        /**
+         * Shortcut to make simple tests
+         *
+         * @param doOutput: Output
+         */
+        end: function( doOutput ) {
+            this.mark("end", "start", (doOutput == null ? true : doOutput));
+            return this;
+        },
+
+        /**
+         * Mark the start / end of a test
+         *
+         * @param name: Name
+         * @param start: Start
+         * @param doOutput: Output
+         */
+        mark: function( name, start, doOutput ) {
+            // Make the mark
+            this.marks[ name ] = $.benchmark.now();
+            if( start ) {
+                this.elapsedTime( start, name, doOutput );
+            }
+            return this;
+        },
+
+        /**
+         * Outputs the elapsed time
+         *
+         * @param m1: Mark 1
+         * @param m2: Mark 2
+         * @param doOutput:  Output
+         */
+        elapsedTime: function( m1, m2, doOutput ) {
+            var time = this.result._= this.marks[ m2 ] - this.marks[ m1 ];
+            if( doOutput ) {
+                // Make the output
+                this.message = output(typeof doOutput === "function" ?
+                    // If a function is passed as the output param,
+                    // run it and pass the values
+                    // I the function don't returns a valid value, throw an error
+                    // this makes it possible to build custom messages
+                    ( doOutput( time, m1, m2 ) || "{error}:elapsedTime->>" + error_messages.callback ) :
+                    // else, output the std message
+                    "start(" + m1 + ")->> end('" + m2 + "') :: Runtime->> " + time + " ms" + (typeof doOutput === "string" ? doOutput : ""));
+            }
+            return this;
+        },
+
+        count: function(prev) {
+            var prop = prev ? this.prev.marks : this.marks, i = 0, n;
+            for( n in prop ) {
+                if( prop.hasOwnProperty( n ) ) {
+                    i = i + 1;
+                }
+            }
+            return i / 2;
+        },
+
+        result: function() {
+            return this.result._;
+        },
+
+        /**
+         * Resets the objects tests
+         */
+        reset: function() {
+            return reset(this, ["marks"]);
+        },
+
+        prev: function(item, sub) {
+            var ret;
+            if (typeof item === "string") {
+                ret = typeof sub === "string" && this.prev[item] ? this.prev[item][sub] : this.prev[item];
+            } else {
+                $.extend(true, ret = {}, this.prev);
+            }
+            return ret;
+        }
+
     }
 
 });
 
 // Handels tests
-function Test( name ) {
-    if( ! ( this instanceof Test ) ) {
-        return new Test( name );
+$.benchmark.Test = function( name ) {
+    if( ! ( this instanceof $.benchmark.Test ) ) {
+        return new $.benchmark.Test( name );
     }
-    this.bench = new B();
+    this.bench = new $.benchmark();
     this.reset();
-    this.name = name;
-    this._result = 0;
-}
+    this.name = name || DF;
+    this.result._ = 0;
+};
 
-
-Test.prototype = {
+$.benchmark.Test.prototype = {
+    
+    ntests: 0,
 
     /**
      * Start a sub-test
@@ -492,9 +420,15 @@ Test.prototype = {
      */
     end: function( name ) {
         name = name || this.name;
-        this.times[ name ] = this.times[ name ] + 1;
-        this.marks[ name ] += this._result = this.bench.mark( name + _e, name + _s, false ).result();
+        this.times[ name ]++;
+        this.marks[ name ] += this.result._ = this.bench.mark( name + _e, name + _s, false ).result();
+        // Count the numbers of tests made
+        this.ntests = this.count();
         return this;
+    },
+    
+    count: function(prev) {
+        return this.bench.count(prev);
     },
 
     /**
@@ -502,30 +436,17 @@ Test.prototype = {
      *
      * @return self
      */
-    output: function() {
-        // Count the numbers of tests made
-        var mark_len = (function( marks ) {
-            var i = 0, n;
-            for( n in marks ) {
-                if( marks.hasOwnProperty( n ) ) {
-                    i = i + 1;
-                }
-            }
-            return i;
-        }( this.marks )),
-
+    output: function(avoidReset) {        
         // Show some extra test details if
         // there have been more than 1 sub-test made
-        more_detail = mark_len > 2,
+        var more_detail = this.ntests > 2,
 
         numberOfTests = 0, name, time;
 
         if( more_detail) {
             // Output a extra line space to make the test more
             // readable and the first line to note that the result have began
-            if ( use_console ) {
-                output();
-            }
+            output();
             this.message = output("Report for test->> '" + this.name + "' :");
         }
 
@@ -536,7 +457,7 @@ Test.prototype = {
                 numberOfTests += this._outputTest( name, "end", (function() {
                     return function( times, time ) {
                         // If only one test have been runned, there isn't any reason to show this info
-                        return times > 1 ? ", Runned->> " + times + " times, Average->> " + B.round( time / times ) + " ms" : " ";
+                        return times > 1 ? ", Runned->> " + times + " times, Average->> " + $.benchmark.round( time / times ) + " ms" : " ";
                     };
                 }()) );
             }
@@ -544,19 +465,16 @@ Test.prototype = {
 
         // If we only have made one sub-test there is no
         // need for the this output to show
-        if ( mark_len !== 2 ) {
-            this._outputTest(this.name, (mark_len > 2 ? "endTest" : "end"), function() {
+        if ( this.ntests !== 2 ) {
+            this._outputTest(this.name, (this.ntests > 2 ? "endTest" : "end"), function() {
                 // Output the test result
                 return more_detail ? ", Total Tests->> " + numberOfTests : " ";
             });
         }
-
-        this.reset();
+        if ( avoidReset !== true ) {
+            this.reset();
+        }
         return this;
-    },
-
-    result: function() {
-        return this._result;
     },
 
     _outputTest: function( name, fn, callback ) {
@@ -567,7 +485,7 @@ Test.prototype = {
         // Make the output
         this.message = output(fn + "('" + name + "') :: Runtime->> " + time + " ms" +
             ( callback( times, time ) || "{error}:_outputTest('" + name + "','" + fn + "')->> " + error_messages.callback ) );
-        this._result = time;
+        this.result._ = time;
         return times;
     },
 
@@ -577,16 +495,68 @@ Test.prototype = {
     reset: function() {
         // Reset the benchmark instance
         this.bench.reset();
-        this.marks = {};
-        this.times = {};
-        return this;
+        return reset(this, ["marks", "times"]);
     }
 
 };
 
-// Join the tester with the benchmarker
-B.tester = Test;
+$.each(["prev", "result"], function(i, name){
+    $.benchmark.Test.prototype[name] = $.benchmark.prototype[name];
+});
 
-tests[ DF ] = new Test( DF );
+function reset(self, items) {
+    for(var l = items.length, i = 0, name; i < l; i++) {
+        name = items[i];
+        self.prev[name] = {};
+        $.extend(true, self.prev[name], self[ name] || {});
+        self[name] = {};
+    }
+    return self;
+}
+
+function rewrite( name, fn, prefix ) {
+    // Don't rewrite the function twice
+    if ( $.benchmark.isRewritten(fn) ) {
+        return fn;
+    }
+
+    name = prefix ? (name ? prefix + "." + name : prefix) : name;
+
+    var ret = function() {
+        //Start the function-test
+        $.benchmark.start(name);
+        // Call the actual function
+        var r = fn.apply(this, arguments);
+        // End the test
+        $.benchmark.end(name);
+        // Return the return value from the function
+        return r;
+    };
+    ret.__is_rewritten__ = true;
+    return ret;
+}
+
+// Internal output function
+function output( message ) {
+    message = message !== undefined ? message : "";
+    // Test if an error have accoured
+    if( error_preg.test( message ) ) {
+        // Build the error message and throw an error
+        $.error(name + ((message.split( error_preg ))[ 2 ]));
+    }
+
+    // Buffer the output wich make it possible
+    // to the the messages using $.benchmark.output();
+    bufferd_output += message + "<br>";
+
+    // Output the message
+    if( enabled && window.console && console.log ) {
+        console.log( typeof message === "string" && message ? name + message : "" );
+    }
+
+    return message;
+}
+
+tests[ DF ] = new $.benchmark.Test( DF );
 
 })( jQuery );
