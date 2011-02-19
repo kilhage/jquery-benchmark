@@ -3,10 +3,12 @@ function log(m){
     console.log(m);
 }
 
+function t(){
+    $("<div />").hide().show();
+};
+
 test("$.benchmark.setup()", function(){
-    var t = function(){
-        $("<div />").hide().show();
-    };
+    
     
     var ob = function() {
         t();
@@ -49,6 +51,7 @@ test("$.benchmark.setup()", function(){
         }
         
     });
+    
     try {
         ob = $.benchmark.setup("ob", ob, true);
         $.benchmark.startTest();
@@ -67,7 +70,7 @@ test("$.benchmark.setup()", function(){
     }
     
     ok(valid);
-    ok(tester.ntests === 6);
+    ok(tester.ntests === 5);
     
     ok(ob.b.b.a.c === null);
     ok(ob.b.b.a.u === undefined);
@@ -84,4 +87,49 @@ test("$.benchmark.setup()", function(){
     ok(ob.s === "hehehe");
     ok(ob.r === rxp);
     
+});
+
+test("$.benchmark.Test -> setup()", function(){
+
+    var tester = new $.benchmark.Test("Test")
+    
+    var valid = true;
+    
+    var tests = $.extend(function(){t();t();t();t();}, {
+        a: function(){
+            t();t();t();t();
+        },
+        b: function(){
+            t();t();
+        }
+    });
+    
+    try {
+        tests = tester.setup(tests, true);
+
+        tester.start();
+
+        var i = 1000,o = i;
+        while(i--) {
+            tests();
+            tests.a();
+            tests.b();
+        }
+
+        tester.end();
+
+        ok(tester.count() === 3);
+
+        tester.output(function(times, time, name) {
+            ok(times === o, "Check " + name);
+            return this._testHandler(times, time, name);
+        });
+    
+    } catch(e) {
+        log(e);
+        valid = false;
+    }
+    
+    ok(valid);
+
 });
