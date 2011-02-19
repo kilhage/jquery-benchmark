@@ -98,6 +98,36 @@ test("$.benchmark.setup()", function(){
     ok(ob.s === "hehehe");
     ok(ob.r === rxp);
     
+    function Class(prop){
+        this.prop = prop;
+    }
+    
+    Class.prototype = {
+        fn: function(arg){
+            return arg;
+        },
+        get: function(){
+            return this.prop;
+        }
+    };
+    
+    var _Class = $.benchmark.setup("Class", Class);
+    
+    var instance = new _Class("prop");
+    
+    ok($.isFunction(instance.get));
+    
+    if ( $.isFunction(instance.get) ) {
+    
+        equals(instance.get(), "prop");
+        equals(instance.fn(true), true);
+        
+    }
+    
+    ok(Class.prototype.isPrototypeOf(instance));
+    ok(instance instanceof Class);
+    ok(instance instanceof _Class);
+    
 });
 
 test("$.benchmark.Test -> setup()", function(){
@@ -134,8 +164,6 @@ test("$.benchmark.Test -> setup()", function(){
 });
 
 test("$.benchmark.Test -> add() -> run()", function(){
-    
-    $.benchmark.enable();
     
     var valid = true, o = 100;
     

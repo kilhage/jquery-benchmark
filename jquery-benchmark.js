@@ -600,6 +600,7 @@ function rewrite( name, fn, prefix, tester ) {
         return r;
     };
     ret.__is_rewritten__ = true;
+    ret.prototype = fn.prototype;
     return ret;
 }
 
