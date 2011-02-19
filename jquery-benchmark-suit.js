@@ -8,45 +8,48 @@ $.fn.extend({
     
     benchmark: function() {
         var self = this,
-            rows = [],
-            status = div.find(".status").html("Building..");
+            rows = {},
+            divs = {},
+            status = div.find(".status").html("Building.."),
+            i = 0;
+            
+        $.each(tests, function(module, test){
+            var div = $("<div />").append("<h2>- "+module+"</h2>").appendTo(self);
+            rows[module] = {};
+            divs[module] = div;
+            $.each(test.tests, function(i, ob){
+                var code = $("<code class='language-javascript'/>").html(ob.fn.toString()).hide();
+                
+                rows[module][ob.name] = ob.test;
+                
+                rows[module][ob.name].li = $("<li class='test'>")
+                    .html("<span>"+ob.name+", times("+ob.times+"')</span>")
+                    .appendTo(div)
+                    .click(function(){
+                    code.slideToggle(50);
+                    })
+                    .append(code);
+            });
+            i++;
+        });
 
-        setTimeout(function(){
-            $.each(tests, function(module, test){
-                self.append("<h2>- "+module+"</h2>");
-                $.each(test.tests, function(i, ob){
-                    var code = $("<code class='language-javascript'/>").html(ob.fn.toString()).hide(),
-                        li = $("<li />")
-                        .html("<span>"+ob.name+", times("+ob.times+"')</span>")
-                        .appendTo(self)
-                        .click(function(){
-                            code.slideToggle(50);
-                        })
-                        .addClass("test")
-                        .append(code);
-                        
-                     rows.push({ob: ob, li: li});
+        status.html("Running tests..");
+        
+        $.each(rows, function(module, tests){
+            setTimeout(function(){
+                var tester = new $.benchmark.Test(module);
+
+                tester.add(tests).run().output(function(times, time, i) {
+                    this.tests[i].li.find("span").first().append(" :: <b>"+time+"ms</b>");
                 });
-            });
-            
-            status.html("Running tests..");
-            $.benchmark.startTest(plugin_name);
-            
-            $.each(rows, function(i, row) {
-                setTimeout(function(){
-                    $.benchmark.start(row.ob.name);
-                    var time = row.ob.test();
-                    
-                    row.li.find("span").first().html(row.li.html()+" :: <b>"+time+"ms</b>");
-                    
-                    $.benchmark.end(row.ob.name);
-                    
-                    if (i == rows.length - 1) {
-                        status.html($.benchmark.endTest(plugin_name).getTest().message);
-                    }
-                }, 0);
-            });
-        }, 0);
+                
+                divs[module].find("h2").after(tester.message+"<br/><br/>");
+                i--;
+                if ( i == 0 ) {
+                    status.html("");
+                }
+            }, 0);
+        });
         
         return this;
     }
@@ -59,16 +62,16 @@ $.extend(window, {
             fn = t;
             t = tests[_module].times || 100;
         }
-        tests[_module].tests.push({
+        var test = {
             test: function(){
-                var b = $.benchmark();
-                fn(t, b);
-                return b.end().result();
+                fn(t);
             },
             name: name,
             fn: fn,
             times: t
-        });
+        };
+        test.fn.nodeType = true;
+        tests[_module].tests.push(test);
     },
 
     module: function(m, t) {

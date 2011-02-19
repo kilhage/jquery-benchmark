@@ -107,19 +107,18 @@ $.extend($.benchmark, {
      * @param {boolean} recursive
      * @return {object/function}
      */
-    setup: function( prefix, object, recursive, tester ) {
+    setup: function( prefix, object, tester ) {
         var new_object = {}, fn, prop, is_fn;
 
         // Switch the arguments if the first parameter isn't a string
         if ( typeof prefix === "string" ) {
             prefix = prefix.replace(/\.$/, "");
         } else {
-            tester = recursive;
-            recursive = object;
+            tester = object;
             object = prefix;
             prefix = "";
         }
-    
+
         tester = tester instanceof $.benchmark.Test ? tester : $.benchmark;
 
         is_fn = $.isFunction(object);
@@ -136,14 +135,9 @@ $.extend($.benchmark, {
                 if ( object.hasOwnProperty( prop ) ) {
                     // Transfer the properties to the new, modified object
                     new_object[ prop ] = (function( prop, fn ) {
-                        var name = prefix ? prefix + "." + prop : prop;
-                        // Rewrite the property
-                        if ( $.isFunction(fn) ) {
-                            return recursive === true ? $.benchmark.setup(name, fn, true, tester) : rewrite(prop, fn, prefix, tester);
-                        }
-                        // Call the setup function recursively
-                        else if ( typeof fn === "object" && fn !== null && recursive === true ) {
-                            return $.benchmark.setup(name, fn, true, tester);
+                        // Rewrite the property, only allow js-objects and arrays
+                        if ( $.isFunction(fn) || (typeof fn === "object" && fn !== null && !fn.nodeType && !fn.jquery) ) {
+                            return $.benchmark.setup(prefix ? prefix + "." + prop : prop, fn, tester);
                         }
                         // Else, don't modify the property
                         return fn;
@@ -384,6 +378,7 @@ $.benchmark.Test = function( name ) {
     this.reset();
     this.name = name || DF;
     this.result._ = 0;
+    this.tests = {};
 };
 
 $.benchmark.Test.prototype = {
@@ -445,7 +440,7 @@ $.benchmark.Test.prototype = {
         
         // Show some extra test details if
         // there have been more than 1 sub-test made
-        var more_detail = this.ntests > 2,
+        var more_detail = this.ntests > 0,
 
         numberOfTests = 0, name;
         
@@ -454,6 +449,7 @@ $.benchmark.Test.prototype = {
         }
         
         testHandler = $.isFunction(testHandler) ? testHandler : this._testHandler;
+        testHandler.std = this._testHandler;
 
         if( more_detail) {
             // Output a extra line space to make the test more
@@ -472,8 +468,8 @@ $.benchmark.Test.prototype = {
 
         // If we only have made one sub-test there is no
         // need for the this output to show
-        if ( this.ntests !== 2 ) {
-            this._outputTest(this.name, (this.ntests > 2 ? "endTest" : "end"), function() {
+        if ( this.ntests !== 1 ) {
+            this._outputTest(this.name, (this.ntests > 0 ? "endTest" : "end"), function() {
                 // Output the test result
                 return more_detail ? ", Total Tests->> " + numberOfTests : " ";
             });
@@ -490,10 +486,13 @@ $.benchmark.Test.prototype = {
         // Get the number of times runned
         var times = this.times[ name ],
         // Get the time
-        time = this.marks[ name ];
+        time = this.marks[ name ],
+        message = callback.call( this, times, time, name );
+        if ( typeof message !== "string" ) {
+            message = typeof callback.std === "function" ? callback.std.call( this, times, time, name ) : "{error}:_outputTest('" + name + "','" + fn + "')->> " + error_messages.callback;
+        }
         // Make the output
-        this.message = output(fn + "('" + name + "') :: Runtime->> " + time + " ms" +
-            ( callback.call( this, times, time, name ) || "{error}:_outputTest('" + name + "','" + fn + "')->> " + error_messages.callback ) );
+        this.message = output(fn + "('" + name + "') :: Runtime->> " + time + " ms" + message );
         this.result._ = time;
         return times;
     },
@@ -512,13 +511,47 @@ $.benchmark.Test.prototype = {
         return reset(this, ["marks", "times"]);
     },
     
-    setup: function(name, object, recursive) {
+    setup: function(name, object) {
         if ( typeof name !== "string" ) {
-            recursive = object;
             object = name;
             name = "";
         }
-        return $.benchmark.setup(name, object, recursive, this);
+        return $.benchmark.setup(name, object, this);
+    },
+    
+    add: function(name, tests) {
+        if ( typeof name !== "string" ) {
+            tests = name;
+            name = "";
+        }
+        tests = this.setup(name, tests);
+        if ( typeof tests === "object" && !name ) {
+            $.extend(this.tests, tests);
+        } else {
+            this.tests[name] = tests;
+        }
+        return this;
+    },
+    
+    run: function(make, times, args) {
+        if ( typeof make !== "boolean" ) {
+            args = times;
+            times = make;
+        }
+        if ( typeof times !== "number" ) {
+            args = times;
+            times = 1;
+        }
+        if ( make !== false ) {
+            this.start();
+        }
+        while(times--) {
+            run(this.tests, this,  $.type(args) === "array" ? args : []);
+        }
+        if ( make !== false ) {
+            this.end();
+        }
+        return this;
     }
 
 };
@@ -526,6 +559,17 @@ $.benchmark.Test.prototype = {
 $.each(["prev", "result"], function(i, name){
     $.benchmark.Test.prototype[name] = $.benchmark.prototype[name];
 });
+
+function run(fn, context, args) {
+    if ( $.isFunction(fn) ) {
+        fn.apply(context, args);
+    }
+    for ( var name in fn ) {
+        if (($.isFunction(fn[name]) || (typeof fn[name] === "object" && fn[name])) && !fn[name].nodeType && !fn[name].jquery) {
+            run(fn[name], fn, args);
+        }
+    }
+}
 
 function reset(self, items) {
     for(var l = items.length, i = 0, name; i < l; i++) {

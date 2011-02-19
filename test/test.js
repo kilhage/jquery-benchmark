@@ -6,6 +6,17 @@ function log(m){
 function t(){
     $("<div />").hide().show();
 };
+    
+var tests = $.extend(function(){t();t();t();t();}, {
+    a: function(){
+        t();t();t();t();
+    },
+    b: function(){
+        t();t();
+    }
+});
+
+$.benchmark.disable();
 
 test("$.benchmark.setup()", function(){
     
@@ -91,29 +102,18 @@ test("$.benchmark.setup()", function(){
 
 test("$.benchmark.Test -> setup()", function(){
 
-    var tester = new $.benchmark.Test("Test")
-    
-    var valid = true;
-    
-    var tests = $.extend(function(){t();t();t();t();}, {
-        a: function(){
-            t();t();t();t();
-        },
-        b: function(){
-            t();t();
-        }
-    });
+    var tester = new $.benchmark.Test("Test"), valid = true;
     
     try {
-        tests = tester.setup(tests, true);
+        var _tests = tester.setup(tests, true);
 
         tester.start();
 
         var i = 1000,o = i;
         while(i--) {
-            tests();
-            tests.a();
-            tests.b();
+            _tests();
+            _tests.a();
+            _tests.b();
         }
 
         tester.end();
@@ -122,7 +122,6 @@ test("$.benchmark.Test -> setup()", function(){
 
         tester.output(function(times, time, name) {
             ok(times === o, "Check " + name);
-            return this._testHandler(times, time, name);
         });
     
     } catch(e) {
@@ -132,4 +131,28 @@ test("$.benchmark.Test -> setup()", function(){
     
     ok(valid);
 
+});
+
+test("$.benchmark.Test -> add() -> run()", function(){
+    
+    $.benchmark.enable();
+    
+    var valid = true, o = 100;
+    
+    try {
+        var tester = $.benchmark.Test().add("tests", tests).run(o);
+
+        ok(tester.count() === 3);
+        
+        tester.output(function(times, time, name) {
+            ok(times === o, "Check " + name);
+        });
+    
+    } catch(e) {
+        log(e);
+        valid = false;
+    }
+    
+    ok(valid);
+    
 });
