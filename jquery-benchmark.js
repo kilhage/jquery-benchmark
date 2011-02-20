@@ -45,10 +45,11 @@ tests = {};
  * @param avoidMarkStart
  */
 $.benchmark = function Benchmarker( avoidMarkStart ) {
-    if( ! ( this instanceof $.benchmark ) ) {
-        return new $.benchmark( avoidMarkStart );
+    if( ! ( this instanceof Benchmarker ) ) {
+        return new Benchmarker( avoidMarkStart );
     }
-    this.reset();
+    this.marks = {};
+    this.prev.marks = {};
     this.result._ = 0;
     if( ! avoidMarkStart ) {
         this.start();
@@ -121,7 +122,7 @@ $.extend($.benchmark, {
 
         tester = tester instanceof $.benchmark.Test ? tester : $.benchmark;
 
-        is_fn = $.isFunction(object);
+        is_fn = $.type(object) === "function";
 
         if ( is_fn || (typeof object === "object" && object) ) {
 
@@ -136,7 +137,7 @@ $.extend($.benchmark, {
                     // Transfer the properties to the new, modified object
                     new_object[ prop ] = (function( prop, fn ) {
                         // Rewrite the property, only allow js-objects and arrays
-                        if ( $.isFunction(fn) || (typeof fn === "object" && fn !== null && !fn.nodeType && !fn.jquery) ) {
+                        if ( $.type(fn) === "function" || (typeof fn === "object" && fn !== null && !fn.nodeType && !fn.jquery) ) {
                             return $.benchmark.setup(prefix ? prefix + "." + prop : prop, fn, tester);
                         }
                         // Else, don't modify the property
@@ -165,9 +166,10 @@ $.extend($.benchmark, {
      */
     startTest: function( name ) {
         curTest = name = name || DF;
-        tests[ name ] = new $.benchmark.Test( name ).start();
+        tests[ name ] = (new $.benchmark.Test( name )).start();
         return this;
     },
+
 
     /**
      * Ends and outputs a test
@@ -304,7 +306,7 @@ $.extend($.benchmark, {
          */
         mark: function( name, start, doOutput ) {
             // Make the mark
-            this.marks[ name ] = $.benchmark.now();
+            this.marks[ name ] = (new Date()).getTime();
             if( start ) {
                 this.elapsedTime( start, name, doOutput );
             }
@@ -370,15 +372,18 @@ $.extend($.benchmark, {
 });
 
 // Handels tests
-$.benchmark.Test = function( name ) {
-    if( ! ( this instanceof $.benchmark.Test ) ) {
-        return new $.benchmark.Test( name );
+$.benchmark.Test = function Test( name ) {
+    if( ! ( this instanceof Test ) ) {
+        return new Test( name );
     }
     this.bench = new $.benchmark();
-    this.reset();
-    this.name = name || DF;
-    this.result._ = 0;
+    this.name = typeof name === "string" ? name : DF;
+    this.marks = {};
+    this.times = {};
+    this.prev.marks = {};
+    this.prev.times = {};
     this.tests = {};
+    this.result._ = 0;
 };
 
 $.benchmark.Test.prototype = {
@@ -394,7 +399,7 @@ $.benchmark.Test.prototype = {
     start: function( name, v ) {
         name = typeof name === "string" ? name : this.name;
         this._start( v );
-        if( this.marks[ name ] == null ) {
+        if( typeof this.marks[ name ] !== "number" ) {
             this.times[ name ] = this.marks[ name ] = 0;
         }
         this.bench.mark( name + _s );
@@ -420,7 +425,7 @@ $.benchmark.Test.prototype = {
      */
     end: function( name ) {
         name = typeof name === "string" ? name : this.name;
-        this.times[ name ]++;
+        this.times[ name ] += 1;
         this.marks[ name ] += this.result._ = this.bench.mark( name + _e, name + _s, false ).result();
         return this;
     },
@@ -448,7 +453,7 @@ $.benchmark.Test.prototype = {
             testHandler = avoidReset;
         }
         
-        testHandler = $.isFunction(testHandler) ? testHandler : this._testHandler;
+        testHandler = $.type(testHandler) === "function" ? testHandler : this._testHandler;
         testHandler.std = this._testHandler;
 
         if( more_detail) {
@@ -560,22 +565,29 @@ $.each(["prev", "result"], function(i, name){
     $.benchmark.Test.prototype[name] = $.benchmark.prototype[name];
 });
 
+$.each(["enable", "disable"], function(i, name){
+    $.benchmark.Test.prototype[name] = $.benchmark[name];
+});
+
 function run(fn, context, args) {
-    if ( $.isFunction(fn) ) {
+    if ( $.type(fn) === "function" ) {
         fn.apply(context, args);
     }
     for ( var name in fn ) {
-        if (($.isFunction(fn[name]) || (typeof fn[name] === "object" && fn[name])) && !fn[name].nodeType && !fn[name].jquery) {
+        if (($.type(fn[name]) === "function" || (typeof fn[name] === "object" && fn[name])) && !fn[name].nodeType && !fn[name].jquery) {
             run(fn[name], fn, args);
         }
     }
 }
 
 function reset(self, items) {
-    for(var l = items.length, i = 0, name; i < l; i++) {
+    var l = items.length, i = 0, name, n;
+    for(; i < l; i += 1) {
         name = items[i];
         self.prev[name] = {};
-        $.extend(true, self.prev[name], self[ name] || {});
+        for ( n in self[name] ) {
+            self.prev[name][n] = self[name][n];
+        }
         self[name] = {};
     }
     return self;

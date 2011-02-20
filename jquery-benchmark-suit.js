@@ -2,8 +2,6 @@
 
 var tests = {}, _module = "", plugin_name = "", div;
 
-$.benchmark.disable();
-
 $.fn.extend({
     
     benchmark: function() {
@@ -19,6 +17,10 @@ $.fn.extend({
             divs[module] = div;
             $.each(test.tests, function(i, ob){
                 var code = $("<code class='language-javascript'/>").html(ob.fn.toString()).hide();
+                
+                if ( ob.name in rows[module]) {
+                    ob.name += i;
+                }
                 
                 rows[module][ob.name] = ob.test;
                 
@@ -39,9 +41,9 @@ $.fn.extend({
             setTimeout(function(){
                 var tester = new $.benchmark.Test(module);
 
-                tester.add(tests).run().output(function(times, time, i) {
+                tester.add(tests).run().disable().output(function(times, time, i) {
                     this.tests[i].li.find("span").first().append(" :: <b>"+time+"ms</b>");
-                });
+                }).enable();
                 
                 divs[module].find("h2").after(tester.message+"<br/><br/>");
                 i--;
@@ -84,6 +86,13 @@ $.extend(window, {
 
     plugin: function(n){
         plugin_name = n;
+    },
+    
+    log: function(m) {
+        if ( window.console && console.log ) {
+            console.log(plugin_name, m);
+        }
+        return m;
     }
 
 });
