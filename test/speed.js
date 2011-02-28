@@ -76,3 +76,37 @@ test("test.reset()", function(i){
         test.reset();
     }
 });
+
+(function(){
+    
+var tests = [], o = 10, r = o, _test = new $.test();
+
+while(o--) {
+    tests.push(function(){});
+}
+
+test("test.setup(), "+r+" functions", function(i) {
+    var test = new $.test();
+    
+    while(i--) {
+        test.setup(tests);
+    }
+});
+
+test("test.add() without setup, "+r+" functions", function(i) {
+    var test = new $.test();
+    
+    while(i--) {
+        test.add(tests, false);
+    }
+});
+
+_test.add(tests, false);
+
+test("test.run() without setting up or starting any tests, "+r+" functions", function(i) {
+    while(i--) {
+        _test.run(false);
+    }
+});
+
+}());

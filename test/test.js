@@ -6,10 +6,14 @@ function log(m){
 function t(){
     $("<div />").hide().show();
 };
-    
+
 var tests = $.extend(function(){t();t();t();t();}, {
     a: function(){
         t();t();t();t();
+    },
+    reg: /vcdf/,
+    c: {
+        r: /de/
     },
     b: function(){
         t();t();
@@ -65,7 +69,7 @@ test("$.benchmark.setup()", function(){
     
     try {
         ob = $.benchmark.setup("ob", ob, true);
-        $.benchmark.startTest();
+        $.benchmark.startTest("Test1");
         var i = 1000;
         while(i--) {
             ob();
@@ -74,14 +78,14 @@ test("$.benchmark.setup()", function(){
             ob.b.b.a();
             ob.b.b.a.a();
         }
-        var tester = $.benchmark.endTest().getTest();
+        var tester = $.benchmark.endTest("Test1").getTest("Test1");
     } catch(e) {
         log(e);
         valid = false;
     }
     
-    ok(valid);
-    ok(tester.ntests === 5);
+    ok(valid, "no errors");
+    ok(tester.ntests === 5, "number of tests("+tester.ntests+" == 5)");
     
     ok(ob.b.b.a.c === null);
     ok(ob.b.b.a.u === undefined);
@@ -168,7 +172,7 @@ test("$.benchmark.Test -> add() -> run()", function(){
     var valid = true, o = 100;
     
     try {
-        var tester = $.benchmark.Test().add("tests", tests).run(o);
+        var tester = $.test().add("tests", tests).run(o);
 
         ok(tester.count() === 3);
         

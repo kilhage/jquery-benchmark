@@ -18,9 +18,6 @@ error_messages = {
     callback: " Callback didn't return a value!"
 },
 
-// Controlls the output
-enabled = true,
-
 // All output will be stored here
 bufferd_output = "",
 
@@ -61,6 +58,9 @@ $.benchmark = function Benchmarker( avoidMarkStart ) {
 $.extend($.benchmark, {
     
     __is_rewritten__: true,
+    
+    // Controlls the output
+    enabled: true,
 
     /**
      * Function tester
@@ -235,7 +235,7 @@ $.extend($.benchmark, {
      * Method to enable/disable the whole output mechanism
      */
     enable: function() {
-        enabled = true;
+        this.enabled = true;
         return this;
     },
 
@@ -243,7 +243,7 @@ $.extend($.benchmark, {
      * Method to enable/disable the whole output mechanism
      */
     disable: function() {
-        enabled = false;
+        this.enabled = false;
         return this;
     },
 
@@ -343,7 +343,7 @@ $.extend($.benchmark, {
                     i = i + 1;
                 }
             }
-            return i / 2;
+            return parseInt(i / 2, 10);
         },
 
         result: function() {
@@ -389,6 +389,7 @@ $.benchmark.Test = function Test( name ) {
 $.benchmark.Test.prototype = {
     
     ntests: 0,
+    enabled: true,
 
     /**
      * Start a sub-test
@@ -459,8 +460,8 @@ $.benchmark.Test.prototype = {
         if( more_detail) {
             // Output a extra line space to make the test more
             // readable and the first line to note that the result have began
-            output();
-            this.message = output("Report for test->> '" + this.name + "' :");
+            this._output();
+            this.message = this._output("Report for test->> '" + this.name + "' :");
         }
 
         for( name in this.marks ) {
@@ -488,16 +489,16 @@ $.benchmark.Test.prototype = {
     },
 
     _outputTest: function( name, fn, callback ) {
-        // Get the number of times runned
+            // Get the number of times runned
         var times = this.times[ name ],
-        // Get the time
-        time = this.marks[ name ],
-        message = callback.call( this, times, time, name );
+            // Get the time
+            time = this.marks[ name ],
+            message = callback.call( this, times, time, name );
         if ( typeof message !== "string" ) {
             message = typeof callback.std === "function" ? callback.std.call( this, times, time, name ) : "{error}:_outputTest('" + name + "','" + fn + "')->> " + error_messages.callback;
         }
         // Make the output
-        this.message = output(fn + "('" + name + "') :: Runtime->> " + time + " ms" + message );
+        this.message = this._output(fn + "('" + name + "') :: Runtime->> " + time + " ms" + message );
         this.result._ = time;
         return times;
     },
@@ -505,6 +506,10 @@ $.benchmark.Test.prototype = {
     _testHandler: function(times, time) {
         // If only one test have been runned, there isn't any reason to show this info
         return times > 1 ? ", Runned->> " + times + " times, Average->> " + $.benchmark.round( time / times ) + " ms" : " ";
+    },
+    
+    _output: function(message) {
+        return output(message, this.enabled);
     },
 
     /**
@@ -524,16 +529,23 @@ $.benchmark.Test.prototype = {
         return $.benchmark.setup(name, object, this);
     },
     
-    add: function(name, tests) {
+    add: function(name, tests, setup) {
         if ( typeof name !== "string" ) {
+            setup = tests;
             tests = name;
             name = "";
         }
-        tests = this.setup(name, tests);
-        if ( typeof tests === "object" && !name ) {
-            $.extend(this.tests, tests);
-        } else {
-            this.tests[name] = tests;
+        if ( tests ) {
+            if ( setup !== false ) {
+                tests = this.setup(name, tests);
+            }
+            if ( typeof tests === "object" && !name ) {
+                for ( var n in tests ) {
+                    this.tests[n] = tests[n];
+                }
+            } else {
+                this.tests[name] = tests;
+            }
         }
         return this;
     },
@@ -547,11 +559,14 @@ $.benchmark.Test.prototype = {
             args = times;
             times = 1;
         }
+        if ( !(args instanceof Array) ) {
+            args = [];
+        }
         if ( make !== false ) {
             this.start();
         }
         while(times--) {
-            run(this.tests, this,  $.type(args) === "array" ? args : []);
+            run(this.tests, this,  args);
         }
         if ( make !== false ) {
             this.end();
@@ -570,12 +585,15 @@ $.each(["enable", "disable"], function(i, name){
 });
 
 function run(fn, context, args) {
-    if ( $.type(fn) === "function" ) {
+    var type, name, item;
+    if ( typeof fn === "function" && !fn.test && !fn.exec && fn.apply ) {
         fn.apply(context, args);
     }
-    for ( var name in fn ) {
-        if (($.type(fn[name]) === "function" || (typeof fn[name] === "object" && fn[name])) && !fn[name].nodeType && !fn[name].jquery) {
-            run(fn[name], fn, args);
+    for ( name in fn ) {
+        item = fn[name];
+        type = typeof item;
+        if (((type === "function") || (type === "object" && item)) && !item.nodeType && !item.jquery) {
+            run(item, fn, args);
         }
     }
 }
@@ -617,8 +635,9 @@ function rewrite( name, fn, prefix, tester ) {
 }
 
 // Internal output function
-function output( message ) {
+function output( message, _enabled ) {
     message = message !== undefined ? message : "";
+    
     // Test if an error have accoured
     if( error_preg.test( message ) ) {
         // Build the error message and throw an error
@@ -630,7 +649,7 @@ function output( message ) {
     bufferd_output += message + "<br>";
 
     // Output the message
-    if( enabled && window.console && console.log ) {
+    if( _enabled && $.benchmark.enabled && window.console && console.log ) {
         console.log( typeof message === "string" && message ? name + message : "" );
     }
 
@@ -638,5 +657,7 @@ function output( message ) {
 }
 
 tests[ DF ] = new $.benchmark.Test( DF );
+
+$.test = $.benchmark.Test;
 
 })( jQuery );

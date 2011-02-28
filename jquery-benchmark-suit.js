@@ -22,15 +22,17 @@ $.fn.extend({
                     ob.name += i;
                 }
                 
-                rows[module][ob.name] = ob.test;
+                rows[module][ob.name] = $.extend(ob.test, {
+                    times: ob.times,
+                    li: $("<li class='test'>")
+                        .html("<span>"+ob.name+" :: <b>"+ob.times+"</b> times</span>")
+                        .appendTo(div)
+                        .click(function(){
+                        code.slideToggle(50);
+                        })
+                        .append(code)
+                });
                 
-                rows[module][ob.name].li = $("<li class='test'>")
-                    .html("<span>"+ob.name+", times("+ob.times+"')</span>")
-                    .appendTo(div)
-                    .click(function(){
-                    code.slideToggle(50);
-                    })
-                    .append(code);
             });
             i++;
         });
@@ -41,9 +43,9 @@ $.fn.extend({
             setTimeout(function(){
                 var tester = new $.benchmark.Test(module);
 
-                tester.add(tests).run().disable().output(function(times, time, i) {
-                    this.tests[i].li.find("span").first().append(" :: <b>"+time+"ms</b>");
-                }).enable();
+                tester.disable().add(tests).run().output(function(times, time, i) {
+                    this.tests[i].li.find("span").first().append(" :: <b>" + time + "ms</b> :: average <b>" + $.benchmark.round( time / this.tests[i].times ) + " ms</b><br>");
+                });
                 
                 divs[module].find("h2").after(tester.message+"<br/><br/>");
                 i--;
@@ -78,10 +80,14 @@ $.extend(window, {
 
     module: function(m, t) {
         _module = m;
-        tests[m] = {
-            times: t,
-            tests: []
-        };
+        if ( !(m in tests)) {
+            tests[m] = {
+                times: t,
+                tests: []
+            };
+        } else if( t != null ) {
+            tests[m].times = t;
+        }
     },
 
     plugin: function(n){
