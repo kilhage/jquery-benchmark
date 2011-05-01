@@ -572,6 +572,15 @@ $.benchmark.Test.prototype = {
             this.end();
         }
         return this;
+    },
+    
+    test: function (name, fn, args, context) {
+        args = args || [];
+        context = context || window;
+        this.start(name);
+        var ret = fn.apply(context, args);
+        this.end(name);
+        return ret;
     }
 
 };

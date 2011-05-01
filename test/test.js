@@ -188,3 +188,30 @@ test("$.benchmark.Test -> add() -> run()", function(){
     ok(valid);
     
 });
+
+test("$.benchmark.Test -> test", function() {
+    
+    var t = new $.test();
+    
+    try {
+    
+        var fn = function() {
+            ok(this == window);
+            equals(arguments.length, 0);
+            return true;
+        };
+
+        var fn2 = function(c) {
+            ok(this == t);
+            return c;
+        };
+
+        equals(t.test("test", fn), true);
+
+        equals(t.test("test2", fn2, [true], t), true, "unnamed");
+    
+    } catch(e) {
+        ok(false);
+    }
+    
+});
