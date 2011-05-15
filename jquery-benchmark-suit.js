@@ -18,7 +18,7 @@
                 i = 0;
 
             $.each(tests, function (module, test) {
-                var div = $("<div />")
+                var div = $("<div class='module' />")
                     .append("<h2>- " + module + "</h2>")
                     .appendTo(self);
                 
@@ -54,7 +54,7 @@
 
             $.each(rows, function (module, tests) {
                 setTimeout(function () {
-                    var tester = new $.benchmark.Test(module);
+                    var tester = new $.test(module);
 
                     tester
                         .disable()
@@ -70,7 +70,9 @@
                         });
 
                     divs[module].find("h2")
-                        .after(tester.message + "<br/><br/>");
+                        .after("<span class='module-result'>" + 
+                            tester.message + 
+                            "</span><br/><br/>");
                     
                     i--;
                     
@@ -123,7 +125,9 @@
 
         log: function (m) {
             if (window.console && console.log) {
-                console.log(plugin_name, m);
+                var args = [plugin_name];
+                Array.prototype.push.apply(args, arguments);
+                console.log.apply(console, args);
             }
             return m;
         }
